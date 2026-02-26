@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+.pnpm-store
+.yarn
+
+# Next.js
+.next
+out
+build
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
