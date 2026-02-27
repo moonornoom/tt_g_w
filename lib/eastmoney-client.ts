@@ -45,6 +45,23 @@ export interface FundHistoryItem {
   cumulativeGrowth: number
 }
 
+// 客户端内存缓存：基金列表（5分钟 TTL），避免每次搜索都拉全量数据
+let fundListCache: { raw: any[]; expires: number } | null = null
+const FUND_LIST_CACHE_TTL = 5 * 60 * 1000
+
+async function fetchRawFundList(): Promise<any[]> {
+  if (fundListCache && Date.now() < fundListCache.expires) {
+    return fundListCache.raw
+  }
+  // 基金列表允许服务端 5 分钟缓存（revalidate=300），但绕过浏览器缓存由客户端内存缓存统一控制
+  const response = await fetch('/api/funds/list', { cache: 'no-store' })
+  if (!response.ok) throw new Error('获取基金列表失败')
+  const data = await response.json()
+  const raw = data.funds || []
+  fundListCache = { raw, expires: Date.now() + FUND_LIST_CACHE_TTL }
+  return raw
+}
+
 // 基金类型颜色映射
 const FUND_TYPE_COLORS: Record<string, string> = {
   '股票型': '#ef4444',
@@ -95,14 +112,8 @@ function getCompanyFromName(name: string): string {
  */
 export async function getFundListAPI(limit: number = 100): Promise<FundSearchResult[]> {
   try {
-    const response = await fetch(`/api/funds/list`)
-    
-    if (!response.ok) {
-      throw new Error('获取基金列表失败')
-    }
-    
-    const data = await response.json()
-    const funds = data.funds?.slice(0, limit) || []
+    const allFunds = await fetchRawFundList()
+    const funds = allFunds.slice(0, limit)
     
     // 获取实时估值
     const codes = funds.map((f: any) => f.code)
@@ -154,7 +165,10 @@ export async function getFundQuotesAPI(
   if (codes.length === 0) return {}
   
   try {
-    const response = await fetch(`/api/funds/quote?codes=${codes.slice(0, 50).join(',')}&source=${source}`)
+    // 行情数据必须实时，禁止任何层级的缓存
+    const response = await fetch(`/api/funds/quote?codes=${codes.slice(0, 50).join(',')}&source=${source}`, {
+      cache: 'no-store',
+    })
     
     if (!response.ok) {
       return {}
@@ -185,7 +199,7 @@ export function setDataSource(source: DataSource): void {
 }
 
 /**
- * 搜索基金
+ * 搜索基金（使用客户端缓存，避免重复拉全量列表）
  */
 export async function searchFundsAPI(keyword: string, limit: number = 50): Promise<FundSearchResult[]> {
   if (!keyword.trim()) {
@@ -193,15 +207,7 @@ export async function searchFundsAPI(keyword: string, limit: number = 50): Promi
   }
   
   try {
-    // 先获取全部基金列表，然后在前端过滤
-    const response = await fetch(`/api/funds/list`)
-    
-    if (!response.ok) {
-      throw new Error('搜索基金失败')
-    }
-    
-    const data = await response.json()
-    const allFunds = data.funds || []
+    const allFunds = await fetchRawFundList()
     
     const lowerKeyword = keyword.toLowerCase()
     

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// 基金列表变化不频繁，服务端缓存 5 分钟
+export const revalidate = 300
+
 /**
  * 获取所有基金列表
  * 代理: http://fund.eastmoney.com/js/fundcode_search.js

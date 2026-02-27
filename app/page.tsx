@@ -52,6 +52,11 @@ export default function HomePage() {
   const [showAddToGroupModal, setShowAddToGroupModal] = useState(false)
   const [fundToAdd, setFundToAdd] = useState<FundSearchResult | null>(null)
   
+  // 搜索状态
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const searchIdRef = useRef(0)
+
   // 刷新状态
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
@@ -199,24 +204,56 @@ export default function HomePage() {
     }
   }, [activeGroupId, isSearchMode, refreshGroupFunds])
 
-  // 搜索基金
-  const handleSearch = async (query: string) => {
+  // 搜索基金（防抖 300ms + 竞态保护）
+  const handleSearch = (query: string) => {
     setSearchQuery(query)
-    if (query.trim()) {
-      setIsSearchMode(true)
-      setLoading(true)
-      try {
-        const results = await searchFundsAPI(query, 100)
-        setFunds(results)
-      } catch (error) {
-        console.error('搜索失败:', error)
-      } finally {
-        setLoading(false)
-      }
-    } else {
+    setSearchError(null)
+
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+
+    if (!query.trim()) {
       setIsSearchMode(false)
       setFunds([])
+      setLoading(false)
+      return
     }
+
+    setIsSearchMode(true)
+    setLoading(true)
+
+    searchTimerRef.current = setTimeout(async () => {
+      const requestId = ++searchIdRef.current
+      try {
+        const results = await searchFundsAPI(query, 100)
+        if (requestId === searchIdRef.current) {
+          setFunds(results)
+        }
+      } catch (error) {
+        if (requestId === searchIdRef.current) {
+          console.error('搜索失败:', error)
+          setSearchError('搜索失败，请检查网络后重试')
+        }
+      } finally {
+        if (requestId === searchIdRef.current) {
+          setLoading(false)
+        }
+      }
+    }, 500)
+  }
+
+  // 清空搜索
+  const handleClearSearch = () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+    searchIdRef.current++
+    setSearchQuery('')
+    setIsSearchMode(false)
+    setFunds([])
+    setLoading(false)
+    setSearchError(null)
   }
 
   // 手动刷新
@@ -332,6 +369,21 @@ export default function HomePage() {
 
   const hasGroups = watchGroups.length > 0
   const hasFunds = displayFunds.length > 0
+
+  // 高亮搜索词
+  const HighlightText = ({ text }: { text: string }) => {
+    if (!isSearchMode || !searchQuery.trim()) return <>{text}</>
+    const q = searchQuery.trim()
+    const idx = text.toLowerCase().indexOf(q.toLowerCase())
+    if (idx === -1) return <>{text}</>
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-yellow-500/25 text-yellow-300 rounded-sm not-italic">{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -558,10 +610,26 @@ export default function HomePage() {
           )}
           <div className="mb-6">
             <SearchInput
-              placeholder="搜索基金名称、代码..."
+              placeholder="搜索基金名称、代码、拼音..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
+              loading={loading && isSearchMode}
+              onClear={handleClearSearch}
             />
+            {searchError && (
+              <div className="mt-2 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm text-red-400 flex-1">{searchError}</span>
+                <button
+                  onClick={() => handleSearch(searchQuery)}
+                  className="text-xs text-red-400 hover:text-red-300 underline shrink-0"
+                >
+                  重试
+                </button>
+              </div>
+            )}
           </div>
 
           {!hasGroups && !isSearchMode && (
@@ -592,6 +660,25 @@ export default function HomePage() {
               </div>
               <h2 className="text-lg font-bold text-white mb-2">观察组是空的</h2>
               <p className="text-text-secondary mb-4">搜索基金并添加到当前观察组</p>
+            </div>
+          )}
+
+          {/* 搜索无结果 */}
+          {!loading && isSearchMode && searchQuery.trim() && funds.length === 0 && !searchError && (
+            <div className="text-center py-20">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-bg-card border border-[#2a2a3a] flex items-center justify-center">
+                <svg className="w-8 h-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2">未找到相关基金</h2>
+              <p className="text-text-secondary text-sm">
+                没有匹配 <span className="text-white font-medium">"{searchQuery}"</span> 的结果
+              </p>
+              <p className="text-text-muted text-xs mt-2">尝试换个关键词，支持基金名称、代码、拼音</p>
+              <button onClick={handleClearSearch} className="mt-4 text-sm text-text-muted hover:text-white underline">
+                清空搜索
+              </button>
             </div>
           )}
 
@@ -678,8 +765,8 @@ export default function HomePage() {
                         />
                       </div>
                     </CardHeader>
-                    <h3 className="font-medium text-white mb-1 truncate">{fund.name}</h3>
-                    <p className="text-xs text-text-muted mb-3">{fund.code} · {fund.company}</p>
+                    <h3 className="font-medium text-white mb-1 truncate"><HighlightText text={fund.name} /></h3>
+                    <p className="text-xs text-text-muted mb-3"><HighlightText text={fund.code} /> · {fund.company}</p>
                     <div className="flex items-end justify-between mb-3">
                       <div>
                         <p className="text-xs text-text-secondary">净值</p>
@@ -760,10 +847,10 @@ export default function HomePage() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white truncate">{fund.name}</span>
+                            <span className="text-sm font-medium text-white truncate"><HighlightText text={fund.name} /></span>
                             {isInWatchGroup && <span className="text-xs text-amber-500 flex-shrink-0">★</span>}
                           </div>
-                          <span className="text-xs text-text-muted">{fund.code}</span>
+                          <span className="text-xs text-text-muted"><HighlightText text={fund.code} /></span>
                         </div>
                       </div>
 
@@ -843,7 +930,7 @@ export default function HomePage() {
                       {/* 第一行：基金名 + 操作按钮 */}
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-sm font-medium text-white truncate">{fund.name}</span>
+                          <span className="text-sm font-medium text-white truncate"><HighlightText text={fund.name} /></span>
                           {isInWatchGroup && <span className="text-xs text-amber-500 shrink-0">★</span>}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -874,7 +961,7 @@ export default function HomePage() {
                       {/* 第二行：代码+类型 + 净值+日涨跌 */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-text-muted">{fund.code}</span>
+                          <span className="text-xs text-text-muted"><HighlightText text={fund.code} /></span>
                           <span className="text-xs text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded">
                             {fund.type.split('-')[0]}
                           </span>
