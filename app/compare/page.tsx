@@ -154,7 +154,7 @@ function CompareContent() {
             </div>
             
             <div className="flex items-center gap-2">
-              <span className="text-sm text-text-secondary">时间范围</span>
+              <span className="hidden sm:inline text-sm text-text-secondary">时间范围</span>
               <select 
                 value={days} 
                 onChange={(e) => setDays(Number(e.target.value))} 
@@ -179,7 +179,7 @@ function CompareContent() {
               <h2 className="text-lg font-bold text-white">累计收益走势</h2>
               <p className="text-sm text-text-secondary">对比各基金历史表现</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               {funds.map((fund, index) => (
                 <div key={fund.code} className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}></span>
@@ -190,7 +190,8 @@ function CompareContent() {
           </div>
           
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
+            <div className="h-[240px] sm:h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
                 <XAxis 
@@ -233,6 +234,7 @@ function CompareContent() {
                 ))}
               </LineChart>
             </ResponsiveContainer>
+            </div>
           ) : (
             <div className="text-center py-16 text-text-muted">暂无数据</div>
           )}

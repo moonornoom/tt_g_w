@@ -19,3 +19,8 @@ build
 # OS
 .DS_Store
 Thumbs.db
+
+# Pipeline 运行时文件
+.pipeline/prd.md
+.pipeline/solution.md
+.pipeline/review-report.md

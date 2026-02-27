@@ -209,6 +209,14 @@ body {
   border-bottom: 1px solid #2a2a3a;
 }
 
+/* 隐藏滚动条但保留滚动功能（移动端横向标签栏使用） */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ========================================
    动画
    ======================================== */

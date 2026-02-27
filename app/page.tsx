@@ -353,7 +353,7 @@ export default function HomePage() {
             
             <div className="flex items-center gap-3">
               {!isSearchMode && lastRefresh && hasFunds && (
-                <div className="flex items-center gap-2 text-xs text-text-muted">
+                <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
                   <span>上次刷新: {lastRefresh.toLocaleTimeString()}</span>
                   <Button variant="ghost" size="sm" onClick={handleManualRefresh} disabled={refreshing}>
                     {refreshing ? '...' : '刷新'}
@@ -375,7 +375,7 @@ export default function HomePage() {
               {selectedFunds.length > 0 && (
                 <div className="flex items-center gap-2">
                   {selectedFunds.map((fund) => (
-                    <div key={fund.code} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <div key={fund.code} className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
                       <span className="text-sm text-red-400 max-w-[80px] truncate">{fund.name}</span>
                       <button onClick={() => toggleFundSelection(fund)} className="text-red-400 hover:text-red-300">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -392,7 +392,7 @@ export default function HomePage() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>新建组</span>
+                <span className="hidden sm:inline">新建组</span>
               </Button>
               
               {/* 设置按钮 */}
@@ -414,7 +414,7 @@ export default function HomePage() {
 
       <div className="flex max-w-container mx-auto">
         {hasGroups && (
-          <aside className="w-72 min-h-screen border-r border-[#2a2a3a] bg-[#0f0f14] p-4">
+          <aside className="hidden md:block w-72 min-h-screen border-r border-[#2a2a3a] bg-[#0f0f14] p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-text-secondary">观察组</h2>
               <span className="text-xs text-text-muted">{watchGroups.length} 个</span>
@@ -487,7 +487,8 @@ export default function HomePage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-secondary border border-[#2a2a3a] rounded-lg text-text-primary text-sm focus:outline-none focus:border-[#3a3a4a]"
+                style={{ colorScheme: 'dark' }}
+                className="w-full px-3 py-2 bg-bg-secondary border border-[#2a2a3a] rounded-lg text-text-primary text-sm focus:outline-none focus:border-[#3a3a4a] cursor-pointer"
               >
                 <option value="default">默认排序</option>
                 <option value="day_desc">日涨跌 ↓ 高到低</option>
@@ -504,7 +505,57 @@ export default function HomePage() {
           </aside>
         )}
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-3 md:p-6">
+          {/* 移动端观察组标签栏（桌面端使用侧边栏，移动端使用此横向标签栏） */}
+          {hasGroups && (
+            <div className="md:hidden -mx-3 mb-4 border-b border-[#2a2a3a]">
+              <div className="flex overflow-x-auto scrollbar-none px-3 pb-2 gap-2">
+                {watchGroups.map((group) => (
+                  <button
+                    key={group.id}
+                    onClick={() => { setActiveGroupId(group.id); setIsSearchMode(false); }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                      activeGroupId === group.id
+                        ? 'bg-[#2a2a3a] text-white'
+                        : 'text-text-muted'
+                    }`}
+                  >
+                    {group.name} <span className="opacity-60">({group.funds.length})</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowGroupModal(true)}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-sm text-text-muted border border-dashed border-[#3a3a4a] whitespace-nowrap"
+                >
+                  + 新建组
+                </button>
+              </div>
+              <div className="flex items-center gap-2 px-3 pb-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ colorScheme: 'dark' }}
+                  className="flex-1 px-2 py-1.5 bg-bg-secondary border border-[#2a2a3a] rounded-lg text-text-primary text-xs focus:outline-none cursor-pointer"
+                >
+                  <option value="default">默认排序</option>
+                  <option value="day_desc">日涨跌↓ 高到低</option>
+                  <option value="day_asc">日涨跌↑ 低到高</option>
+                  <option value="month_desc">近一月↓ 高到低</option>
+                  <option value="year_desc">近一年↓ 高到低</option>
+                  <option value="net_value_desc">净值↓ 高到低</option>
+                </select>
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={refreshing || !activeGroupId}
+                  className="p-1.5 rounded-lg border border-[#2a2a3a] bg-bg-secondary text-text-muted disabled:opacity-50"
+                >
+                  <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
           <div className="mb-6">
             <SearchInput
               placeholder="搜索基金名称、代码..."
@@ -546,7 +597,7 @@ export default function HomePage() {
 
           {hasFunds && (
             <>
-              <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
                 <Card className="!p-4">
                   <p className="text-xs text-text-secondary mb-1">{isSearchMode ? '搜索结果' : '基金总数'}</p>
                   <p className="text-2xl font-bold text-white">{stats.total}</p>
@@ -661,117 +712,188 @@ export default function HomePage() {
           
           {/* 列表视图 */}
           {!loading && hasFunds && viewMode === 'list' && (
-            <div className="bg-bg-card rounded-xl border border-[#2a2a3a] overflow-hidden">
-              {/* 表头 */}
-              <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-bg-secondary text-xs text-text-muted font-medium border-b border-[#2a2a3a]">
-                <div className="col-span-4">基金名称</div>
-                <div className="col-span-1 text-right">净值</div>
-                <div className="col-span-1 text-right">日涨跌</div>
-                <div className="col-span-1 text-right">近一月</div>
-                <div className="col-span-1 text-right">近一年</div>
-                <div className="col-span-2">类型</div>
-                <div className="col-span-1 text-right">规模</div>
-                <div className="col-span-1 text-center">操作</div>
-              </div>
-              
-              {/* 列表内容 */}
-              {sortedFunds.map((fund) => {
-                const isSelected = selectedFunds.some(f => f.code === fund.code)
-                const isInWatchGroup = watchGroups.some(g => g.funds.some(f => f.code === fund.code))
-                
-                return (
-                  <div 
-                    key={fund.code} 
-                    className={`grid grid-cols-12 gap-4 px-4 py-3 items-center border-b border-[#2a2a3a] hover:bg-bg-hover transition-colors ${isSelected ? 'bg-purple-500/10' : ''}`}
-                  >
-                    {/* 基金名称 */}
-                    <div className="col-span-4 flex items-center gap-3 min-w-0">
-                      {/* 涨跌图标 */}
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        fund.day_growth > 0 ? 'bg-red-500/20' : fund.day_growth < 0 ? 'bg-green-500/20' : 'bg-bg-secondary'
-                      }`}>
-                        {fund.day_growth > 0 ? (
-                          <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                          </svg>
-                        ) : fund.day_growth < 0 ? (
-                          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-white truncate">{fund.name}</span>
-                          {isInWatchGroup && <span className="text-xs text-amber-500 flex-shrink-0">★</span>}
+            <div className="rounded-xl border border-[#2a2a3a] overflow-hidden">
+              {/* 桌面端完整表格 */}
+              <div className="hidden md:block overflow-x-auto">
+                <div className="bg-bg-card min-w-[640px]">
+                {/* 表头 */}
+                <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-bg-secondary text-xs text-text-muted font-medium border-b border-[#2a2a3a]">
+                  <div className="col-span-4">基金名称</div>
+                  <div className="col-span-1 text-right">净值</div>
+                  <div className="col-span-1 text-right">日涨跌</div>
+                  <div className="col-span-1 text-right">近一月</div>
+                  <div className="col-span-1 text-right">近一年</div>
+                  <div className="col-span-2">类型</div>
+                  <div className="col-span-1 text-right">规模</div>
+                  <div className="col-span-1 text-center">操作</div>
+                </div>
+
+                {/* 列表内容 */}
+                {sortedFunds.map((fund) => {
+                  const isSelected = selectedFunds.some(f => f.code === fund.code)
+                  const isInWatchGroup = watchGroups.some(g => g.funds.some(f => f.code === fund.code))
+
+                  return (
+                    <div
+                      key={fund.code}
+                      className={`grid grid-cols-12 gap-4 px-4 py-3 items-center border-b border-[#2a2a3a] hover:bg-bg-hover transition-colors ${isSelected ? 'bg-purple-500/10' : ''}`}
+                    >
+                      {/* 基金名称 */}
+                      <div className="col-span-4 flex items-center gap-3 min-w-0">
+                        {/* 涨跌图标 */}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          fund.day_growth > 0 ? 'bg-red-500/20' : fund.day_growth < 0 ? 'bg-green-500/20' : 'bg-bg-secondary'
+                        }`}>
+                          {fund.day_growth > 0 ? (
+                            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                            </svg>
+                          ) : fund.day_growth < 0 ? (
+                            <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                            </svg>
+                          )}
                         </div>
-                        <span className="text-xs text-text-muted">{fund.code}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white truncate">{fund.name}</span>
+                            {isInWatchGroup && <span className="text-xs text-amber-500 flex-shrink-0">★</span>}
+                          </div>
+                          <span className="text-xs text-text-muted">{fund.code}</span>
+                        </div>
+                      </div>
+
+                      {/* 净值 */}
+                      <div className="col-span-1 text-right">
+                        <span className="text-sm text-white font-medium">{fund.net_value.toFixed(4)}</span>
+                      </div>
+
+                      {/* 日涨跌 */}
+                      <div className="col-span-1 text-right">
+                        <GrowthText value={fund.day_growth} className="text-sm font-bold" />
+                      </div>
+
+                      {/* 近一月 */}
+                      <div className="col-span-1 text-right">
+                        <GrowthText value={fund.month_growth} className="text-sm" />
+                      </div>
+
+                      {/* 近一年 */}
+                      <div className="col-span-1 text-right">
+                        <GrowthText value={fund.year_growth} className="text-sm" />
+                      </div>
+
+                      {/* 类型 */}
+                      <div className="col-span-2">
+                        <span className="text-xs text-text-secondary bg-bg-secondary px-2 py-1 rounded">
+                          {fund.type.split('-')[0]}
+                        </span>
+                      </div>
+
+                      {/* 规模 */}
+                      <div className="col-span-1 text-right">
+                        <span className="text-sm text-text-secondary">{formatAmount(fund.total_assets)}</span>
+                      </div>
+
+                      {/* 操作 */}
+                      <div className="col-span-1 flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => { setFundToAdd(fund); setShowAddToGroupModal(true); }}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-white hover:bg-bg-secondary transition-colors"
+                          title="添加到组"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => toggleFundSelection(fund)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isSelected ? 'text-purple-400 bg-purple-500/20' : 'text-text-muted hover:text-white hover:bg-bg-secondary'
+                          }`}
+                          title={isSelected ? '取消选择' : '选择'}
+                          disabled={!isSelected && selectedFunds.length >= 5}
+                        >
+                          <svg className="w-4 h-4" fill={isSelected ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                    
-                    {/* 净值 */}
-                    <div className="col-span-1 text-right">
-                      <span className="text-sm text-white font-medium">{fund.net_value.toFixed(4)}</span>
+                  )
+                })}
+                </div>
+              </div>
+
+              {/* 移动端紧凑列表 */}
+              <div className="md:hidden bg-bg-card divide-y divide-[#2a2a3a]">
+                {sortedFunds.map((fund) => {
+                  const isSelected = selectedFunds.some(f => f.code === fund.code)
+                  const isInWatchGroup = watchGroups.some(g => g.funds.some(f => f.code === fund.code))
+
+                  return (
+                    <div
+                      key={fund.code}
+                      className={`px-4 py-3 ${isSelected ? 'bg-purple-500/10' : ''}`}
+                    >
+                      {/* 第一行：基金名 + 操作按钮 */}
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-sm font-medium text-white truncate">{fund.name}</span>
+                          {isInWatchGroup && <span className="text-xs text-amber-500 shrink-0">★</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => { setFundToAdd(fund); setShowAddToGroupModal(true); }}
+                            className="p-1.5 rounded-lg text-text-muted hover:text-white hover:bg-bg-secondary transition-colors"
+                            title="添加到组"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => toggleFundSelection(fund)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              isSelected ? 'text-purple-400 bg-purple-500/20' : 'text-text-muted hover:text-white hover:bg-bg-secondary'
+                            }`}
+                            title={isSelected ? '取消选择' : '选择'}
+                            disabled={!isSelected && selectedFunds.length >= 5}
+                          >
+                            <svg className="w-4 h-4" fill={isSelected ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 第二行：代码+类型 + 净值+日涨跌 */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-text-muted">{fund.code}</span>
+                          <span className="text-xs text-text-secondary bg-bg-secondary px-1.5 py-0.5 rounded">
+                            {fund.type.split('-')[0]}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-text-muted">¥{fund.net_value.toFixed(4)}</span>
+                          <GrowthText value={fund.day_growth} className="text-sm font-bold" />
+                        </div>
+                      </div>
+
+                      {/* 第三行：近一月 + 近一年 */}
+                      <div className="flex items-center justify-end gap-4 mt-1">
+                        <span className="text-xs text-text-muted">近一月 <GrowthText value={fund.month_growth} className="text-xs" /></span>
+                        <span className="text-xs text-text-muted">近一年 <GrowthText value={fund.year_growth} className="text-xs" /></span>
+                      </div>
                     </div>
-                    
-                    {/* 日涨跌 */}
-                    <div className="col-span-1 text-right">
-                      <GrowthText value={fund.day_growth} className="text-sm font-bold" />
-                    </div>
-                    
-                    {/* 近一月 */}
-                    <div className="col-span-1 text-right">
-                      <GrowthText value={fund.month_growth} className="text-sm" />
-                    </div>
-                    
-                    {/* 近一年 */}
-                    <div className="col-span-1 text-right">
-                      <GrowthText value={fund.year_growth} className="text-sm" />
-                    </div>
-                    
-                    {/* 类型 */}
-                    <div className="col-span-2">
-                      <span className="text-xs text-text-secondary bg-bg-secondary px-2 py-1 rounded">
-                        {fund.type.split('-')[0]}
-                      </span>
-                    </div>
-                    
-                    {/* 规模 */}
-                    <div className="col-span-1 text-right">
-                      <span className="text-sm text-text-secondary">{formatAmount(fund.total_assets)}</span>
-                    </div>
-                    
-                    {/* 操作 */}
-                    <div className="col-span-1 flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => { setFundToAdd(fund); setShowAddToGroupModal(true); }}
-                        className="p-1.5 rounded-lg text-text-muted hover:text-white hover:bg-bg-secondary transition-colors"
-                        title="添加到组"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => toggleFundSelection(fund)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isSelected ? 'text-purple-400 bg-purple-500/20' : 'text-text-muted hover:text-white hover:bg-bg-secondary'
-                        }`}
-                        title={isSelected ? '取消选择' : '选择'}
-                        disabled={!isSelected && selectedFunds.length >= 5}
-                      >
-                        <svg className="w-4 h-4" fill={isSelected ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )}
         </main>
