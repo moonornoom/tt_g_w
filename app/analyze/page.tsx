@@ -83,8 +83,8 @@ export default function AnalyzePage() {
         if (quote) {
           return {
             ...fund,
-            net_value: parseFloat(quote.dwjz),
-            day_growth: parseFloat(quote.gszzl),
+            netValue: parseFloat(quote.dwjz),
+            dayGrowth: parseFloat(quote.gszzl),
           }
         }
         return fund
@@ -178,13 +178,10 @@ export default function AnalyzePage() {
   // 计算统计数据
   const stats = selectedGroup ? {
     total: selectedGroup.funds.length,
-    rising: selectedGroup.funds.filter(f => f.day_growth > 0).length,
-    falling: selectedGroup.funds.filter(f => f.day_growth < 0).length,
+    rising: selectedGroup.funds.filter(f => f.dayGrowth > 0).length,
+    falling: selectedGroup.funds.filter(f => f.dayGrowth < 0).length,
     avgGrowth: selectedGroup.funds.length > 0
-      ? selectedGroup.funds.reduce((sum, f) => sum + f.day_growth, 0) / selectedGroup.funds.length
-      : 0,
-    avgYearGrowth: selectedGroup.funds.length > 0
-      ? selectedGroup.funds.reduce((sum, f) => sum + f.year_growth, 0) / selectedGroup.funds.length
+      ? selectedGroup.funds.reduce((sum, f) => sum + f.dayGrowth, 0) / selectedGroup.funds.length
       : 0,
   } : null
 
@@ -287,12 +284,12 @@ export default function AnalyzePage() {
                       <div key={fund.code} className="p-3 rounded-lg bg-bg-secondary">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm text-text-primary truncate flex-1">{fund.name}</span>
-                          <GrowthText value={fund.day_growth} className="text-sm font-medium ml-2" />
+                          <GrowthText value={fund.dayGrowth} className="text-sm font-medium ml-2" />
                         </div>
                         <div className="flex items-center gap-2 text-xs text-text-muted">
                           <span>{fund.code}</span>
                           <span>·</span>
-                          <span>净值 {fund.net_value.toFixed(4)}</span>
+                          <span>净值 {fund.netValue.toFixed(4)}</span>
                         </div>
                       </div>
                     ))}

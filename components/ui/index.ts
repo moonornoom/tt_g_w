@@ -8,6 +8,7 @@ export { GrowthText, GrowthBadge, getGrowthColor, getGrowthBg, formatGrowth } fr
 export { Loading, FullScreenLoading, LoadingArea } from './Loading'
 export { Input, SearchInput } from './Input'
 export { Modal, ModalFooter, ConfirmModal } from './Modal'
+export { SortSelect } from './SortSelect'
 
 // 类型导出
 export type { BadgeVariant } from './Badge'

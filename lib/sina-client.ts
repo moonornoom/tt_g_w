@@ -44,22 +44,22 @@ export async function fetchSinaFundQuote(code: string): Promise<SinaFundQuote | 
 
     const text = await decodeSinaResponse(response)
     
-    // 解析格式: var hq_str_fu_000001="华夏成长混合,000001,2025-02-12,1.2340,1.2450,0.89,..."
+    // 新格式 (2026-03): 基金名称,估值时间,?,?,?,?,涨跌幅,净值日期,单位净值,?
+    // 示例: 华夏成长混合A,15:24:00,1.1040,1.1160,3.6890,0,-1.0753,2026-03-11,1.1171,0.0986
     const match = text.match(/var hq_str_fu_\d+="([^"]*)"/)
     if (!match) return null
 
     const data = match[1].split(',')
-    if (data.length < 6) return null
+    if (data.length < 9) return null
 
-    // 新浪数据字段: 基金名称,基金代码,净值日期,单位净值,估算净值,涨跌幅,...
     return {
       fundcode: code,
       name: data[0] || '',
-      jzrq: data[2] || '',
-      dwjz: data[3] || '0',
-      gsz: data[4] || '0',
-      gszzl: data[5] || '0',
-      gztime: data[2] || '', // 新浪没有单独的估值时间字段
+      jzrq: data[7] || '',      // 净值日期
+      dwjz: data[8] || '0',      // 单位净值
+      gsz: data[8] || '0',       // 估算值（取单位净值）
+      gszzl: data[6] || '0',     // 涨跌幅
+      gztime: data[1] || '',     // 估值时间
     }
   } catch (error) {
     console.error(`新浪获取基金${code}失败:`, error)
@@ -100,15 +100,15 @@ export async function fetchSinaFundQuotes(codes: string[]): Promise<Record<strin
         const code = match[1]
         const data = match[2].split(',')
         
-        if (data.length >= 6) {
+        if (data.length >= 9) {
           quotes[code] = {
             fundcode: code,
             name: data[0] || '',
-            jzrq: data[2] || '',
-            dwjz: data[3] || '0',
-            gsz: data[4] || '0',
-            gszzl: data[5] || '0',
-            gztime: data[2] || '',
+            jzrq: data[7] || '',      // 净值日期
+            dwjz: data[8] || '0',      // 单位净值
+            gsz: data[8] || '0',       // 估算值（取单位净值）
+            gszzl: data[6] || '0',     // 涨跌幅
+            gztime: data[1] || '',     // 估值时间
           }
         }
       }

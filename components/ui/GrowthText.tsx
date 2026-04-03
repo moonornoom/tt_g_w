@@ -42,12 +42,14 @@ export function GrowthText({
   showSign = true,
   suffix = '%'
 }: GrowthTextProps) {
-  const colorClass = getGrowthColor(value)
-  const prefix = showSign && value >= 0 ? '+' : ''
+  // 空值保护
+  const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0
+  const colorClass = getGrowthColor(safeValue)
+  const prefix = showSign && safeValue >= 0 ? '+' : ''
   
   return (
     <span className={`${colorClass} ${className}`}>
-      {prefix}{value.toFixed(decimals)}{suffix}
+      {prefix}{safeValue.toFixed(decimals)}{suffix}
     </span>
   )
 }
@@ -66,13 +68,15 @@ export function GrowthBadge({
   showSign = true,
   showBg = true
 }: GrowthBadgeProps) {
-  const colorClass = getGrowthColor(value)
-  const bgClass = showBg ? getGrowthBg(value) : ''
-  const prefix = showSign && value >= 0 ? '+' : ''
+  // 空值保护
+  const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0
+  const colorClass = getGrowthColor(safeValue)
+  const bgClass = showBg ? getGrowthBg(safeValue) : ''
+  const prefix = showSign && safeValue >= 0 ? '+' : ''
   
   return (
     <span className={`px-2 py-0.5 rounded ${colorClass} ${bgClass} ${className}`}>
-      {prefix}{value.toFixed(decimals)}%
+      {prefix}{safeValue.toFixed(decimals)}%
     </span>
   )
 }

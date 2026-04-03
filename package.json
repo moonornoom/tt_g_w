@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -14,17 +14,22 @@
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.48",
+    "@ai-sdk/react": "^3.0.139",
     "@supabase/supabase-js": "^2.95.3",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
+    "ai": "^6.0.137",
     "axios": "^1.13.5",
     "date-fns": "^4.1.0",
     "iconv-lite": "^0.7.2",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
+    "remark-gfm": "^4.0.1",
     "typescript": "^5.9.3"
   },
   "devDependencies": {

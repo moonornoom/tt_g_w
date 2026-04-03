@@ -8,6 +8,9 @@ node_modules
 out
 build
 
+# Agent 服务端会话快照（/api/chat 合并历史）
+.data/
+
 # Environment
 .env
 .env.local
@@ -24,3 +27,18 @@ Thumbs.db
 .pipeline/prd.md
 .pipeline/solution.md
 .pipeline/review-report.md
+
+# Harness 运行时（保留 .harness 下规则与脚本，忽略会话与快照）
+.harness/sessions/
+.harness/.context-snapshot.json
+
+# Harness v4 (auto-generated)
+CLAUDE.md
+AGENTS.md
+.cursor/rules/harness.mdc
+
+# Windows reserved
+nul
+
+# Build artifacts
+tsconfig.tsbuildinfo

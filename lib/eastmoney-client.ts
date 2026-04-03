@@ -3,47 +3,10 @@
  * 通过 Next.js API Routes 代理调用，避免跨域问题
  */
 
-import { DataSource } from './sina-client'
+import { FundSearchResult, FundQuote, FundHistoryItem, DataSource } from './types'
 
-// 重新导出 DataSource 类型
-export type { DataSource } from './sina-client'
-
-// 基金搜索结果
-export interface FundSearchResult {
-  code: string
-  name: string
-  type: string
-  company: string
-  net_value: number
-  total_assets: number
-  day_growth: number
-  week_growth: number
-  month_growth: number
-  year_growth: number
-  management_fee: number
-  custodian_fee: number
-  establishment_date: string
-  status: string
-}
-
-// 基金实时估值
-export interface FundQuote {
-  fundcode: string
-  name: string
-  jzrq: string      // 净值日期
-  dwjz: string      // 单位净值
-  gsz: string       // 估算值
-  gszzl: string     // 估算涨跌幅
-  gztime: string    // 估值时间
-}
-
-// 历史净值
-export interface FundHistoryItem {
-  date: string
-  netValue: number
-  dayGrowth: number
-  cumulativeGrowth: number
-}
+// 重新导出类型
+export type { DataSource, FundSearchResult, FundQuote, FundHistoryItem } from './types'
 
 // 客户端内存缓存：基金列表（5分钟 TTL），避免每次搜索都拉全量数据
 let fundListCache: { raw: any[]; expires: number } | null = null
@@ -108,7 +71,7 @@ function getCompanyFromName(name: string): string {
 }
 
 /**
- * 获取基金列表
+ * 获取基金列表（仅真实数据）
  */
 export async function getFundListAPI(limit: number = 100): Promise<FundSearchResult[]> {
   try {
@@ -119,32 +82,19 @@ export async function getFundListAPI(limit: number = 100): Promise<FundSearchRes
     const codes = funds.map((f: any) => f.code)
     const quotes = await getFundQuotesAPI(codes)
     
-    // 组合数据
+    // 组合数据（仅使用真实数据）
     return funds.map((fund: any) => {
       const quote = quotes[fund.code]
       const dayGrowth = quote ? parseFloat(quote.gszzl) : 0
       const netValue = quote ? parseFloat(quote.dwjz) : 1
-      
-      // 生成模拟的其他增长率
-      const weekGrowth = dayGrowth * 3 + (Math.random() * 6 - 3)
-      const monthGrowth = dayGrowth * 10 + (Math.random() * 15 - 7.5)
-      const yearGrowth = dayGrowth * 50 + (Math.random() * 40 - 20)
       
       return {
         code: fund.code,
         name: fund.name,
         type: FUND_TYPE_MAP[fund.type] || fund.type || '混合型',
         company: getCompanyFromName(fund.name),
-        net_value: netValue,
-        total_assets: Math.floor(Math.random() * 10000000000) + 100000000,
-        day_growth: parseFloat(dayGrowth.toFixed(2)),
-        week_growth: parseFloat(weekGrowth.toFixed(2)),
-        month_growth: parseFloat(monthGrowth.toFixed(2)),
-        year_growth: parseFloat(yearGrowth.toFixed(2)),
-        management_fee: 1.5,
-        custodian_fee: 0.25,
-        establishment_date: '2020-01-01',
-        status: 'active',
+        netValue,
+        dayGrowth: parseFloat(dayGrowth.toFixed(2)),
       }
     })
   } catch (error) {
@@ -228,25 +178,13 @@ export async function searchFundsAPI(keyword: string, limit: number = 50): Promi
       const dayGrowth = quote ? parseFloat(quote.gszzl) : 0
       const netValue = quote ? parseFloat(quote.dwjz) : 1
       
-      const weekGrowth = dayGrowth * 3 + (Math.random() * 6 - 3)
-      const monthGrowth = dayGrowth * 10 + (Math.random() * 15 - 7.5)
-      const yearGrowth = dayGrowth * 50 + (Math.random() * 40 - 20)
-      
       return {
         code: fund.code,
         name: fund.name,
         type: FUND_TYPE_MAP[fund.type] || fund.type || '混合型',
         company: getCompanyFromName(fund.name),
-        net_value: netValue,
-        total_assets: Math.floor(Math.random() * 10000000000) + 100000000,
-        day_growth: parseFloat(dayGrowth.toFixed(2)),
-        week_growth: parseFloat(weekGrowth.toFixed(2)),
-        month_growth: parseFloat(monthGrowth.toFixed(2)),
-        year_growth: parseFloat(yearGrowth.toFixed(2)),
-        management_fee: 1.5,
-        custodian_fee: 0.25,
-        establishment_date: '2020-01-01',
-        status: 'active',
+        netValue,
+        dayGrowth: parseFloat(dayGrowth.toFixed(2)),
       }
     })
   } catch (error) {
