@@ -7,7 +7,7 @@ import { getFundHistoryAPI, getFundListAPI, getFundQuotesAPI } from '@/lib/eastm
 import { FundHistoryItem, FundSearchResult } from '@/lib/types'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, ComposedChart, Bar, TooltipProps,
+  ReferenceLine, ComposedChart, Bar,
 } from 'recharts'
 import { Card, GrowthText, FullScreenLoading } from '@/components/ui'
 
@@ -242,9 +242,10 @@ function FundChartContent() {
   const fmtDate = (l: string | number) => { const val = String(l ?? ''); if (!val || val.length !== 8) return val; return `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}` }
 
   // 自定义 Tooltip：补一天模式下显示与预测净值的差值
-  const NavTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const NavTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || payload.length === 0) return null
-    const item = payload[0]?.payload
+    const item = payload[0]?.payload as { netValue?: number; ma5?: number | null; ma10?: number | null; ma20?: number | null; hs300?: number | null; isPredicted?: boolean; dayGrowth?: number } | undefined
     if (!item) return null
 
     const rows: { label: string; value: string; color?: string }[] = []
