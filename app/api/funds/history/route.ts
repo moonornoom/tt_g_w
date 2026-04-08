@@ -2,21 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * 获取基金历史净值
- * 代理: http://fund.eastmoney.com/f10/F10Data.aspx
+ * 数据源: http://fund.eastmoney.com/pingzhongdata/{code}.js
+ * 
+ * 返回 Data_netWorthTrend: [{x: timestamp_ms, y: netValue, equityReturn: dayGrowth%}]
+ * 全量历史数据，服务端按 sdate/edate 过滤
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const pageSize = parseInt(searchParams.get('pageSize') || '30')
-  const pageIndex = parseInt(searchParams.get('pageIndex') || '1')
-  
+  const sdate = searchParams.get('sdate') || ''
+  const edate = searchParams.get('edate') || ''
+
   if (!code) {
     return NextResponse.json({ error: 'No fund code provided' }, { status: 400 })
   }
-  
+
   try {
-    const url = `http://fund.eastmoney.com/f10/F10Data.aspx?type=lsjz&code=${code}&page=${pageIndex}&sdate=&edate=&per=${pageSize}`
-    
+    const url = `http://fund.eastmoney.com/pingzhongdata/${code}.js?v=${Date.now()}`
+
     const response = await fetch(url, {
       headers: {
         'Accept': '*/*',
@@ -24,43 +28,56 @@ export async function GET(request: NextRequest) {
         'Referer': `http://fund.eastmoney.com/f10/jjjz_${code}.html`,
       },
     })
-    
+
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to fetch history' }, { status: response.status })
     }
-    
+
     const text = await response.text()
-    
-    // 解析HTML中的表格数据
-    const history: { date: string; netValue: number; dayGrowth: number }[] = []
-    const rowRegex = /<td>(\d{4}-\d{2}-\d{2})<\/td>\s*<td[^>]*>([\d.]+)<\/td>\s*<td[^>]*>([\d.]+)<\/td>\s*<td[^>]*>([-\d.]+)%?<\/td>/g
-    
-    let match
-    while ((match = rowRegex.exec(text)) !== null) {
-      history.push({
-        date: match[1].replace(/-/g, ''),
-        netValue: parseFloat(match[2]),
-        dayGrowth: parseFloat(match[4]),
-      })
+
+    // 解析 Data_netWorthTrend = [{x: timestamp_ms, y: netValue, equityReturn: dayGrowth%}, ...]
+    const match = text.match(/var\s+Data_netWorthTrend\s*=\s*(\[[\s\S]*?\]);/)
+    if (!match) {
+      return NextResponse.json({ history: [], total: 0 })
     }
-    
-    // 反转顺序，从最早到最新
-    history.reverse()
-    
-    // 计算累计收益
-    const result: { date: string; netValue: number; dayGrowth: number; cumulativeGrowth: number }[] = []
+
+    const rawData: { x: number; y: number; equityReturn: number }[] = JSON.parse(match[1])
+
+    // 转换格式 + 按日期过滤
+    const startDate = sdate ? new Date(sdate).getTime() : 0
+    const endDate = edate ? new Date(edate + 'T23:59:59').getTime() : Infinity
+
+    let filtered = rawData.filter(item => item.x >= startDate && item.x <= endDate)
+
+    // 如果没有日期过滤，取最后 pageSize 条
+    if (!sdate && !edate) {
+      filtered = filtered.slice(-pageSize)
+    }
+
+    // 格式化：YYYYMMDD
+    const history = filtered.map(item => {
+      const d = new Date(item.x)
+      const dateStr = [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getDate()).padStart(2, '0'),
+      ].join('')
+      return {
+        date: dateStr,
+        netValue: item.y,
+        dayGrowth: parseFloat((item.equityReturn ?? 0).toFixed(2)),
+      }
+    })
+
+    // 计算累计收益（基于区间首日净值）
     const baseValue = history[0]?.netValue || 1
-    
-    for (const row of history) {
-      const cumulativeGrowth = ((row.netValue - baseValue) / baseValue) * 100
-      result.push({
-        date: row.date,
-        netValue: row.netValue,
-        dayGrowth: row.dayGrowth,
-        cumulativeGrowth: parseFloat(cumulativeGrowth.toFixed(2)),
-      })
-    }
-    
+    const result = history.map(row => ({
+      date: row.date,
+      netValue: row.netValue,
+      dayGrowth: row.dayGrowth,
+      cumulativeGrowth: parseFloat((((row.netValue - baseValue) / baseValue) * 100).toFixed(2)),
+    }))
+
     return NextResponse.json({ history: result, total: result.length })
   } catch (error) {
     console.error('获取基金历史净值失败:', error)

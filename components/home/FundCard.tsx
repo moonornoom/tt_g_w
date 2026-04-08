@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { FundSearchResult } from '@/lib/types'
 import { Card, CardHeader, CardFooter, FundTypeBadge, GrowthText, IconButton } from '@/components/ui'
 import { formatAmount } from '@/lib/eastmoney-client'
@@ -25,6 +26,7 @@ export function FundCard({
   onAddToGroup,
   onRemoveFromGroup,
 }: FundCardProps) {
+  const router = useRouter()
   const HighlightText = ({ text }: { text: string }) => {
     if (!isSearchMode || !searchQuery.trim()) return <>{text}</>
     const q = searchQuery.trim()
@@ -82,6 +84,15 @@ export function FundCard({
         </div>
       </div>
       <CardFooter>
+        <button
+          onClick={() => router.push(`/fund/${fund.code}`)}
+          className="text-center flex-1 hover:text-white transition-colors cursor-pointer"
+        >
+          <p className="text-xs text-text-muted mb-1">走势图</p>
+          <svg className="w-4 h-4 mx-auto text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </button>
         <div className="text-center flex-1">
           <p className="text-xs text-text-muted mb-1">日涨跌</p>
           <GrowthText value={fund.dayGrowth} className="text-sm font-medium" />

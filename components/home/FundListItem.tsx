@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { FundSearchResult } from '@/lib/types'
 import { GrowthText } from '@/components/ui'
 
@@ -26,6 +27,8 @@ export function FundListItem({
   onAddToGroup,
   onRemoveFromGroup,
 }: FundListItemProps) {
+  const router = useRouter()
+
   const HighlightText = ({ text }: { text: string }) => {
     if (!isSearchMode || !searchQuery.trim()) return <>{text}</>
     const q = searchQuery.trim()
@@ -49,6 +52,15 @@ export function FundListItem({
             {isInWatchGroup && <span className="text-xs text-amber-500 shrink-0">★</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => router.push(`/fund/${fund.code}`)}
+              className="p-1.5 rounded-lg text-text-muted hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+              title="净值走势"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </button>
             {isSearchMode ? (
               <button
                 onClick={() => onAddToGroup(fund)}
@@ -139,6 +151,15 @@ export function FundListItem({
         <GrowthText value={fund.dayGrowth} className="text-sm font-bold" />
       </div>
       <div className="col-span-3 flex items-center justify-end gap-1">
+        <button
+          onClick={() => router.push(`/fund/${fund.code}`)}
+          className="p-1.5 rounded-lg text-text-muted hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+          title="净值走势"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </button>
         {isSearchMode ? (
           <button
             onClick={() => onAddToGroup(fund)}

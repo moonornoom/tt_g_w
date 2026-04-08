@@ -195,10 +195,34 @@ export async function searchFundsAPI(keyword: string, limit: number = 50): Promi
 
 /**
  * 获取基金历史净值
+ * @param fundCode 基金代码
+ * @param pageSizeOrOptions 页大小（数字）或选项对象（支持日期范围）
  */
-export async function getFundHistoryAPI(fundCode: string, pageSize: number = 30): Promise<FundHistoryItem[]> {
+export async function getFundHistoryAPI(
+  fundCode: string,
+  pageSizeOrOptions?: number | { pageSize?: number; startDate?: string; endDate?: string }
+): Promise<FundHistoryItem[]> {
   try {
-    const response = await fetch(`/api/funds/history?code=${fundCode}&pageSize=${pageSize}`)
+    let pageSize = 30
+    let startDate = ''
+    let endDate = ''
+
+    if (typeof pageSizeOrOptions === 'number') {
+      pageSize = pageSizeOrOptions
+    } else if (pageSizeOrOptions) {
+      pageSize = pageSizeOrOptions.pageSize ?? 30
+      startDate = pageSizeOrOptions.startDate ?? ''
+      endDate = pageSizeOrOptions.endDate ?? ''
+    }
+
+    const params = new URLSearchParams({
+      code: fundCode,
+      pageSize: String(pageSize),
+    })
+    if (startDate) params.set('sdate', startDate)
+    if (endDate) params.set('edate', endDate)
+
+    const response = await fetch(`/api/funds/history?${params.toString()}`)
     
     if (!response.ok) {
       throw new Error('获取基金历史净值失败')
