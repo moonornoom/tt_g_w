@@ -21,6 +21,7 @@ pnpm-debug.log*
 # IDE
 .idea
 .vscode
+.cursor
 *.swp
 *.swo
 
@@ -32,7 +33,7 @@ Thumbs.db
 .git
 .gitignore
 
-# Docker (prevent recursive copy)
+# Docker
 Dockerfile
 docker-compose*.yml
 .dockerignore
@@ -46,3 +47,27 @@ coverage
 !README.md
 .editorconfig
 .eslintcache
+
+# Non-fund files (agent/harness/skills/docs not needed for build)
+.cache/
+.claude/
+.harness/
+.pipeline/
+.tasks/
+app/agent/
+app/api/agents/
+app/api/chat/
+app/api/market/
+app/api/tasks/
+components/agent/
+docs/
+hooks/useSessionManager.ts
+lib/agent/
+lib/task-manager.ts
+skills/
+hello.txt
+nul
+tsconfig.tsbuildinfo
+AGENTS.md
+CLAUDE.md
+DEPLOY*.md

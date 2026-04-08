@@ -1,68 +1,50 @@
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+# 使用阿里云 Alpine 镜像源 + 安装依赖一步完成，减少层
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@10.12.4 --activate
 
 WORKDIR /app
 
-# Copy package files
 COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# 淘宝镜像 + 安装依赖
+RUN pnpm config set registry https://registry.npmmirror.com \
+    && pnpm install --frozen-lockfile
 
-# Stage 2: Builder
-FROM node:20-alpine AS builder
+# Stage 2: Builder（复用 deps 的基础镜像和 pnpm，不重新安装）
+FROM deps AS builder
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
-WORKDIR /app
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
-
-# Build the application
 RUN pnpm build
 
-# Stage 3: Runner (Production)
+# Stage 3: Runner（最小化镜像）
 FROM node:20-alpine AS runner
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs \
+    && mkdir -p public .next \
+    && chown nextjs:nodejs .next
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Create public directory if it doesn't exist
-RUN mkdir -p public
-
-# Set correct permissions for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Copy standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Switch to non-root user
 USER nextjs
 
-# Expose port
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the application
 CMD ["node", "server.js"]
