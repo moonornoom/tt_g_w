@@ -1,11 +1,33 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { getFundRankingAPI } from '@/lib/eastmoney-client'
-import { FundRankingItem, RankingSortColumn } from '@/lib/types'
-import { GrowthText } from '@/components/ui'
-import { FundTypeBadge } from '@/components/ui'
+import { FundRankingItem, RankingSortColumn, FundSearchResult, WatchGroup } from '@/lib/types'
+import { GrowthText, Button, FundTypeBadge } from '@/components/ui'
+import { useWatchGroups } from '@/hooks/useWatchGroups'
+import { AddToGroupModal } from '@/components/home/AddToGroupModal'
+
+function rankingToFundSearch(f: FundRankingItem): FundSearchResult {
+  return {
+    code: f.code,
+    name: f.name,
+    type: f.fundType,
+    company: '其他',
+    netValue: f.netValue,
+    dayGrowth: f.dailyGrowth,
+  }
+}
+
+/** 一键默认目标：优先「非当前」观察组；仅一组时只能加入该组 */
+function pickDefaultNonCurrentGroup(groups: WatchGroup[], currentId: string | null): WatchGroup | null {
+  if (groups.length === 0) return null
+  if (currentId) {
+    const other = groups.find((g) => g.id !== currentId)
+    return other ?? groups[0]
+  }
+  return groups.length > 1 ? groups[1] : groups[0]
+}
 
 const SORT_OPTIONS: { value: RankingSortColumn; label: string }[] = [
   { value: 'SYL_JN', label: '今年以来' },
@@ -61,6 +83,7 @@ function ReturnCell({ value, highlight }: { value: number; highlight?: boolean }
 
 export default function RankingPage() {
   const router = useRouter()
+  const { watchGroups, activeGroupId, addFundToGroup } = useWatchGroups()
   const [funds, setFunds] = useState<FundRankingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -68,6 +91,31 @@ export default function RankingPage() {
   const [sortColumn, setSortColumn] = useState<RankingSortColumn>('SYL_JN')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [fundType, setFundType] = useState('0')
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [fundToAdd, setFundToAdd] = useState<FundSearchResult | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 2500)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  /** 首页当前选中组（用于文案说明） */
+  const quickGroup = useMemo(
+    () => pickDefaultNonCurrentGroup(watchGroups, activeGroupId),
+    [watchGroups, activeGroupId]
+  )
+
+  const quickTargetIsNonCurrent = useMemo(() => {
+    if (!quickGroup || !activeGroupId) return activeGroupId === null && watchGroups.length > 1
+    return quickGroup.id !== activeGroupId
+  }, [quickGroup, activeGroupId, watchGroups.length])
+
+  const isInQuickGroup = useCallback(
+    (code: string) => quickGroup?.funds.some((f) => f.code === code) ?? false,
+    [quickGroup]
+  )
 
   const fetchRanking = useCallback(async () => {
     setLoading(true)
@@ -104,6 +152,22 @@ export default function RankingPage() {
     setPage(1)
   }
 
+  const openAddModal = (fund: FundRankingItem) => {
+    setFundToAdd(rankingToFundSearch(fund))
+    setShowAddModal(true)
+  }
+
+  const handleAddToGroup = (groupId: string) => {
+    if (fundToAdd) addFundToGroup(groupId, fundToAdd)
+  }
+
+  const handleQuickAddDefault = (fund: FundRankingItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!quickGroup) return
+    addFundToGroup(quickGroup.id, rankingToFundSearch(fund))
+    setToast(`已加入「${quickGroup.name}」`)
+  }
+
   const sortLabel = SORT_OPTIONS.find(o => o.value === sortColumn)?.label || '今年以来'
 
   return (
@@ -125,6 +189,13 @@ export default function RankingPage() {
                 <h1 className="text-lg font-bold text-white">基金收益排行榜</h1>
                 <p className="text-xs text-text-muted">
                   共 {total.toLocaleString()} 只基金 · 按{sortLabel}{sortOrder === 'desc' ? '降序' : '升序'}
+                  {quickGroup && (
+                    <span className="text-text-secondary">
+                      {' · '}
+                      默认加入「{quickGroup.name}」
+                      {quickTargetIsNonCurrent ? '（非当前观察组）' : watchGroups.length <= 1 ? '（唯一观察组）' : ''}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -198,7 +269,7 @@ export default function RankingPage() {
           <>
             <div className="rounded-xl border border-[#2a2a3a] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px]">
+                <table className="w-full min-w-[1040px]">
                   <thead>
                     <tr className="bg-bg-secondary text-xs text-text-muted border-b border-[#2a2a3a]">
                       <th className="px-3 py-3 text-left w-12">排名</th>
@@ -230,6 +301,7 @@ export default function RankingPage() {
                         onClick={() => handleSortChange('SYL_LN')}>
                         <SortHeader label="成立以来" active={sortColumn === 'SYL_LN'} order={sortOrder} />
                       </th>
+                      <th className="px-2 py-3 text-right w-[148px] whitespace-nowrap">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#2a2a3a]">
@@ -265,6 +337,42 @@ export default function RankingPage() {
                           <ReturnCell value={fund.ytdReturn} highlight={sortColumn === 'SYL_JN'} />
                           <ReturnCell value={fund.yearReturn} highlight={sortColumn === 'SYL_1N'} />
                           <ReturnCell value={fund.sinceInception} highlight={sortColumn === 'SYL_LN'} />
+                          <td
+                            className="px-2 py-2 text-right align-middle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              {quickGroup && (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  title={
+                                    quickTargetIsNonCurrent
+                                      ? `一键加入非当前观察组「${quickGroup.name}」`
+                                      : `一键加入「${quickGroup.name}」`
+                                  }
+                                  disabled={isInQuickGroup(fund.code)}
+                                  onClick={(e) => handleQuickAddDefault(fund, e)}
+                                  className="!px-2 !py-1 text-xs whitespace-nowrap"
+                                >
+                                  {isInQuickGroup(fund.code) ? '已在该组' : '默认加入'}
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openAddModal(fund)
+                                }}
+                                className="!px-2 !py-1 text-xs whitespace-nowrap"
+                              >
+                                选择组
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
@@ -329,6 +437,26 @@ export default function RankingPage() {
           </>
         )}
       </div>
+
+      <AddToGroupModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false)
+          setFundToAdd(null)
+        }}
+        fund={fundToAdd}
+        watchGroups={watchGroups}
+        onAddToGroup={handleAddToGroup}
+      />
+
+      {toast && (
+        <div
+          className="fixed bottom-8 left-1/2 z-[100] -translate-x-1/2 px-4 py-2.5 rounded-xl border border-red-500/25 bg-bg-card text-sm text-white shadow-lg"
+          role="status"
+        >
+          {toast}
+        </div>
+      )}
 
       <footer className="border-t border-[#2a2a3a] py-4 text-center mt-8">
         <p className="text-xs text-text-muted">
