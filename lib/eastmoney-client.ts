@@ -3,10 +3,10 @@
  * 通过 Next.js API Routes 代理调用，避免跨域问题
  */
 
-import { FundSearchResult, FundQuote, FundHistoryItem, DataSource } from './types'
+import { FundSearchResult, FundQuote, FundHistoryItem, DataSource, FundRankingItem, RankingSortColumn } from './types'
 
 // 重新导出类型
-export type { DataSource, FundSearchResult, FundQuote, FundHistoryItem } from './types'
+export type { DataSource, FundSearchResult, FundQuote, FundHistoryItem, FundRankingItem, RankingSortColumn } from './types'
 
 // 客户端内存缓存：基金列表（5分钟 TTL），避免每次搜索都拉全量数据
 let fundListCache: { raw: any[]; expires: number } | null = null
@@ -149,7 +149,7 @@ export function setDataSource(source: DataSource): void {
 }
 
 /**
- * 搜索基金（使用客户端缓存，避免重复拉全量列表）
+ * 搜索基金（通过服务端 API，避免客户端全量拉取）
  */
 export async function searchFundsAPI(keyword: string, limit: number = 50): Promise<FundSearchResult[]> {
   if (!keyword.trim()) {
@@ -157,17 +157,14 @@ export async function searchFundsAPI(keyword: string, limit: number = 50): Promi
   }
   
   try {
-    const allFunds = await fetchRawFundList()
+    const response = await fetch(`/api/funds/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`, {
+      cache: 'no-store',
+    })
     
-    const lowerKeyword = keyword.toLowerCase()
+    if (!response.ok) return []
     
-    const filtered = allFunds.filter((fund: any) => 
-      fund.name.includes(keyword) ||
-      fund.code.includes(keyword) ||
-      fund.pinyin?.toLowerCase().includes(lowerKeyword)
-    )
-    
-    const result = filtered.slice(0, limit)
+    const data = await response.json()
+    const result = data.funds || []
     
     // 获取实时估值
     const codes = result.map((f: any) => f.code)
@@ -233,6 +230,38 @@ export async function getFundHistoryAPI(
   } catch (error) {
     console.error('获取基金历史净值失败:', error)
     return []
+  }
+}
+
+/**
+ * 获取基金排行榜
+ */
+export async function getFundRankingAPI(params: {
+  page?: number
+  pageSize?: number
+  sort?: RankingSortColumn
+  order?: 'asc' | 'desc'
+  fundType?: string
+} = {}): Promise<{ funds: FundRankingItem[]; total: number; page: number; pageSize: number }> {
+  const { page = 1, pageSize = 40, sort = 'SYL_JN', order = 'desc', fundType = '0' } = params
+  try {
+    const searchParams = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+      sort,
+      order,
+      fundType,
+    })
+    const response = await fetch(`/api/funds/ranking?${searchParams.toString()}`, {
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      throw new Error('获取排行榜失败')
+    }
+    return await response.json()
+  } catch (error) {
+    console.error('获取基金排行榜失败:', error)
+    return { funds: [], total: 0, page, pageSize }
   }
 }
 

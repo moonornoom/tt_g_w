@@ -9,11 +9,14 @@ import { useFundSearch } from '@/hooks/useFundSearch'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { 
   Card, Button, GrowthText, 
-  LoadingArea, SearchInput, Modal, ModalFooter, SortSelect 
+  LoadingArea, SearchInput
 } from '@/components/ui'
 import { WatchGroupSidebar } from '@/components/home/WatchGroupSidebar'
 import { FundCard } from '@/components/home/FundCard'
 import { FundListItem } from '@/components/home/FundListItem'
+import { CreateGroupModal } from '@/components/home/CreateGroupModal'
+import { AddToGroupModal } from '@/components/home/AddToGroupModal'
+import { SettingsModal } from '@/components/home/SettingsModal'
 import { MarketAnalysisModal } from '@/components/analysis/MarketAnalysisModal'
 
 export default function HomePage() {
@@ -93,7 +96,6 @@ export default function HomePage() {
 
   // Modals
   const [showGroupModal, setShowGroupModal] = useState(false)
-  const [newGroupName, setNewGroupName] = useState('')
   const [showAddToGroupModal, setShowAddToGroupModal] = useState(false)
   const [fundToAdd, setFundToAdd] = useState<FundSearchResult | null>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -143,17 +145,14 @@ export default function HomePage() {
     router.push(`/compare?funds=${codes}`)
   }
 
-  const handleCreateGroup = () => {
-    if (!newGroupName.trim()) return
-    createGroup(newGroupName)
-    setNewGroupName('')
+  const handleCreateGroup = (name: string) => {
+    createGroup(name)
     setShowGroupModal(false)
   }
 
   const handleAddToGroup = (groupId: string) => {
     if (!fundToAdd) return
     addFundToGroup(groupId, fundToAdd)
-    setShowAddToGroupModal(false)
     setFundToAdd(null)
   }
 
@@ -212,6 +211,13 @@ export default function HomePage() {
                 </div>
               )}
               
+              <Button variant="secondary" onClick={() => router.push('/ranking')}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                <span className="hidden sm:inline">排行榜</span>
+              </Button>
+
               <Button variant="secondary" onClick={() => setShowGroupModal(true)}>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -435,93 +441,28 @@ export default function HomePage() {
       </div>
 
       {/* 新建观察组 Modal */}
-      <Modal isOpen={showGroupModal} onClose={() => { setShowGroupModal(false); setNewGroupName(''); }} title="新建观察组">
-        <input
-          type="text"
-          placeholder="输入组名称..."
-          value={newGroupName}
-          onChange={(e) => setNewGroupName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
-          className="w-full px-4 py-2 bg-bg-secondary border border-[#2a2a3a] rounded-lg text-white placeholder-text-muted focus:outline-none focus:border-[#3a3a4a] mb-4"
-          autoFocus
-        />
-        <ModalFooter>
-          <Button variant="secondary" onClick={() => { setShowGroupModal(false); setNewGroupName(''); }}>取消</Button>
-          <Button onClick={handleCreateGroup}>创建</Button>
-        </ModalFooter>
-      </Modal>
+      <CreateGroupModal
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        onCreateGroup={handleCreateGroup}
+      />
 
       {/* 添加到观察组 Modal */}
-      <Modal isOpen={showAddToGroupModal && fundToAdd !== null} onClose={() => { setShowAddToGroupModal(false); setFundToAdd(null); }} title="添加到观察组">
-        <p className="text-sm text-text-secondary mb-4">{fundToAdd?.name}</p>
-        {watchGroups.length === 0 ? (
-          <p className="text-center text-text-muted py-4">暂无观察组，请先创建</p>
-        ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {watchGroups.map((group) => {
-              const isAlreadyIn = fundToAdd ? group.funds.some(f => f.code === fundToAdd.code) : false
-              return (
-                <button
-                  key={group.id}
-                  onClick={() => !isAlreadyIn && handleAddToGroup(group.id)}
-                  disabled={isAlreadyIn}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg ${
-                    isAlreadyIn ? 'bg-bg-tertiary text-text-muted cursor-not-allowed' : 'bg-bg-secondary text-text-primary hover:bg-bg-hover'
-                  }`}
-                >
-                  <span>{group.name}</span>
-                  {isAlreadyIn && <span className="text-xs">已添加</span>}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        <ModalFooter>
-          <Button variant="secondary" onClick={() => { setShowAddToGroupModal(false); setFundToAdd(null); }}>关闭</Button>
-        </ModalFooter>
-      </Modal>
+      <AddToGroupModal
+        isOpen={showAddToGroupModal && fundToAdd !== null}
+        onClose={() => { setShowAddToGroupModal(false); setFundToAdd(null); }}
+        fund={fundToAdd}
+        watchGroups={watchGroups}
+        onAddToGroup={handleAddToGroup}
+      />
 
       {/* 设置 Modal */}
-      <Modal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} title="设置">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">基金数据源</label>
-            <div className="space-y-2">
-              <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                dataSource === 'eastmoney' ? 'bg-red-500/10 border-red-500/30' : 'bg-bg-secondary border-[#2a2a3a]'
-              }`}>
-                <input type="radio" name="dataSource" value="eastmoney" checked={dataSource === 'eastmoney'} onChange={() => handleSetDataSource('eastmoney')} className="sr-only" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">天天基金</p>
-                  <p className="text-xs text-text-muted mt-1">交易时间实时更新</p>
-                </div>
-                {dataSource === 'eastmoney' && (
-                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </label>
-              <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                dataSource === 'sina' ? 'bg-red-500/10 border-red-500/30' : 'bg-bg-secondary border-[#2a2a3a]'
-              }`}>
-                <input type="radio" name="dataSource" value="sina" checked={dataSource === 'sina'} onChange={() => handleSetDataSource('sina')} className="sr-only" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">新浪财经</p>
-                  <p className="text-xs text-text-muted mt-1">非交易时间也有估值</p>
-                </div>
-                {dataSource === 'sina' && (
-                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </label>
-            </div>
-          </div>
-        </div>
-        <ModalFooter>
-          <Button variant="secondary" onClick={() => setShowSettingsModal(false)}>关闭</Button>
-        </ModalFooter>
-      </Modal>
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        dataSource={dataSource}
+        onSetDataSource={handleSetDataSource}
+      />
       
       {/* AI 市场分析 Modal */}
       <MarketAnalysisModal
